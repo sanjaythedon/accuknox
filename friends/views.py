@@ -1,19 +1,19 @@
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from users.models import ModifiedUser
+from users.permissions import IsLoggedIn
 from .models import FriendRequests
 from .serializers import FriendsSerializer, UserSerializer
 from .throttlers import UserLevelThrottle
 
 
 class SendFriendRequest(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLoggedIn]
     throttle_classes = [UserLevelThrottle]
     
     def post(self, request):
-        me = ModifiedUser.objects.get(id=request.user.id)
+        me = ModifiedUser.objects.get(id=request.session['user_id'])
         they = ModifiedUser.objects.get(id=request.data.get('who'))
         
         FriendRequests.objects.create(sender_id=me,
@@ -24,20 +24,20 @@ class SendFriendRequest(APIView):
     
     
 class GetPendingFriendRequests(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLoggedIn]
     
     def get(self, request):
-        me = ModifiedUser.objects.get(id=request.user.id)
+        me = ModifiedUser.objects.get(id=request.session['user_id'])
         frnd_requests = FriendRequests.objects.filter(receiver_id=me, status='pending')
         ser = FriendsSerializer(frnd_requests, many=True)
         return Response(ser.data)
     
     
 class ManageFriendRequest(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLoggedIn]
     
     def post(self, request):
-        me = ModifiedUser.objects.get(id=request.user.id)
+        me = ModifiedUser.objects.get(id=request.session['user_id'])
         they = ModifiedUser.objects.get(id=request.data.get('who'))
         action = request.data.get('action')
         
@@ -52,10 +52,10 @@ class ManageFriendRequest(APIView):
     
     
 class Friends(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLoggedIn]
     
     def get(self, request):
-        me = ModifiedUser.objects.get(id=request.user.id)
+        me = ModifiedUser.objects.get(id=request.session['user_id'])
         print(me)
         sent_reqs = FriendRequests.objects.filter(sender_id=me,
                                                 status='accepted').values_list('receiver_id', flat=True)

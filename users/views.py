@@ -1,5 +1,6 @@
 from .serializers import UserSerializer
 from .models import ModifiedUser
+from .permissions import IsLoggedIn
 
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView
@@ -8,7 +9,8 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.mixins import ListModelMixin
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.authtoken.models import Token
 
 
 class UserRegistration(APIView):    
@@ -20,19 +22,38 @@ class UserRegistration(APIView):
             u.save()
             return Response({'msg': 'User created'})
         else:
-            return Response({'msg': 'User not created'})            
+            return Response({'msg': 'User not created'})    
+        
+        
+class Login(ObtainAuthToken):
+    
+    def post(self, request):
+        ser = self.serializer_class(data=request.data,
+                                    context={'request': request})
+        ser.is_valid(raise_exception=True)
+        user = ser.validated_data.get('user')
+        print(user.id)
+        token, _ = Token.objects.get_or_create(user=user)
+        print(token.key)
+        self.request.session['token'] = token.key
+        self.request.session['user_id'] = user.id
+        # self.request.user = 
+        
+        return Response({'msg': 'User is logged in'})
+        
         
         
 class Logout(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLoggedIn]
     
     def post(self, request):
-        request.user.auth_token.delete()
+        Token.objects.get(key=request.session['token']).delete()
+        del request.session['token']
         return Response({'msg': 'Token deleted'})
     
     
 class GetAllUsers(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsLoggedIn]
     
     def get(self, request):
         users = ModifiedUser.objects.all().order_by('id')
