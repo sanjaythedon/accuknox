@@ -1,4 +1,6 @@
 from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView, ListAPIView
+from rest_framework.mixins import ListModelMixin
 from rest_framework.response import Response
 
 from users.models import ModifiedUser
@@ -23,14 +25,22 @@ class SendFriendRequest(APIView):
         return Response({'msg': f'Friend request is sent to {they}'})
     
     
-class GetPendingFriendRequests(APIView):
+class GetPendingFriendRequests(ListAPIView):
     permission_classes = [IsLoggedIn]
+    serializer_class = FriendsSerializer
+    
+    def get_queryset(self):
+        me = ModifiedUser.objects.get(id=self.request.session['user_id'])
+        frnd_requests = FriendRequests.objects.filter(receiver_id=me, status='pending')
+        return frnd_requests
+    
     
     def get(self, request):
-        me = ModifiedUser.objects.get(id=request.session['user_id'])
-        frnd_requests = FriendRequests.objects.filter(receiver_id=me, status='pending')
-        ser = FriendsSerializer(frnd_requests, many=True)
-        return Response(ser.data)
+        # me = ModifiedUser.objects.get(id=request.session['user_id'])
+        # frnd_requests = FriendRequests.objects.filter(receiver_id=me, status='pending')
+        # ser = FriendsSerializer(frnd_requests, many=True)
+        # return Response(ser.data)
+        return self.list(request)
     
     
 class ManageFriendRequest(APIView):
@@ -52,19 +62,31 @@ class ManageFriendRequest(APIView):
             return Response({'msg': f'Friend request sent by {they} is rejected'})
             
     
-class Friends(APIView):
+class Friends(ListAPIView):
     permission_classes = [IsLoggedIn]
+    serializer_class = UserSerializer
     
-    def get(self, request):
-        me = ModifiedUser.objects.get(id=request.session['user_id'])
-        print(me)
+    def get_queryset(self):
+        me = ModifiedUser.objects.get(id=self.request.session['user_id'])
         sent_reqs = FriendRequests.objects.filter(sender_id=me,
                                                 status='accepted').values_list('receiver_id', flat=True)
-        print(sent_reqs)
         received_reqs = FriendRequests.objects.filter(receiver_id=me,
                                                     status='accepted').values_list('sender_id', flat=True)
-        print(received_reqs)
         friend_ids = sent_reqs.union(received_reqs)
         queryset = ModifiedUser.objects.filter(id__in=friend_ids)
-        ser = UserSerializer(queryset, many=True)
-        return Response(ser.data)
+        return queryset
+    
+    def get(self, request):
+        # me = ModifiedUser.objects.get(id=request.session['user_id'])
+        # print(me)
+        # sent_reqs = FriendRequests.objects.filter(sender_id=me,
+        #                                         status='accepted').values_list('receiver_id', flat=True)
+        # print(sent_reqs)
+        # received_reqs = FriendRequests.objects.filter(receiver_id=me,
+        #                                             status='accepted').values_list('sender_id', flat=True)
+        # print(received_reqs)
+        # friend_ids = sent_reqs.union(received_reqs)
+        # queryset = ModifiedUser.objects.filter(id__in=friend_ids)
+        # ser = UserSerializer(queryset, many=True)
+        # return Response(ser.data)
+        return self.list(request)

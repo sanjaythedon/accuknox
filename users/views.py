@@ -1,6 +1,7 @@
 from .serializers import UserSerializer
 from .models import ModifiedUser
 from .permissions import IsLoggedIn
+from .pagination import TenEntriesPage
 
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView
@@ -11,6 +12,7 @@ from rest_framework.mixins import ListModelMixin
 from rest_framework.generics import ListAPIView
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
+
 
 
 class UserRegistration(APIView):    
@@ -54,23 +56,41 @@ class Logout(APIView):
         return Response({'msg': f'{user} is logged out'})
     
     
-class GetAllUsers(APIView):
+class GetAllUsers(ListAPIView):
     permission_classes = [IsLoggedIn]
+    pagination_class = TenEntriesPage
+    serializer_class = UserSerializer
+    
+    def get_queryset(self):
+        users = ModifiedUser.objects.all().order_by('id')
+        users = self.filter_queryset(users)
+        return users
+    
+    def filter_queryset(self, queryset):
+        name = self.request.query_params.get('name')
+        email = self.request.query_params.get('email')
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+        elif email:
+            queryset = queryset.filter(email__icontains=email)
+        return queryset
     
     def get(self, request):
-        users = ModifiedUser.objects.all().order_by('id')
-        name = request.query_params.get('name')
-        email = request.query_params.get('email')
-        if name:
-            users = users.filter(name__icontains=name)
-        elif email:
-            users = users.filter(email__icontains=email)
-        page = PageNumberPagination()
-        page.page_size = 10
-        users = page.paginate_queryset(users, request)
-        ser = UserSerializer(users, many=True)
-        response = page.get_paginated_response(ser.data)
-        return response
+        # users = ModifiedUser.objects.all().order_by('id')
+        # name = request.query_params.get('name')
+        # email = request.query_params.get('email')
+        # if name:
+        #     users = users.filter(name__icontains=name)
+        # elif email:
+        #     users = users.filter(email__icontains=email)
+        # page = PageNumberPagination()
+        # page.page_size = 10
+        # users = page.paginate_queryset(users, request)
+        # ser = UserSerializer(users, many=True)
+        # response = page.get_paginated_response(ser.data)
+        # return response
+        return self.list(request)
+        
     
     
 
