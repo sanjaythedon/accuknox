@@ -20,9 +20,9 @@ class UserRegistration(APIView):
             u = ModifiedUser.objects.create(**request.data)
             u.set_password(request.data['password'])
             u.save()
-            return Response({'msg': 'User created'})
+            return Response({'msg': f'User {u} is created'})
         else:
-            return Response({'msg': 'User not created'})    
+            return Response({'msg': 'Please fill name, username, email and password'})    
         
         
 class Login(ObtainAuthToken):
@@ -37,9 +37,8 @@ class Login(ObtainAuthToken):
         print(token.key)
         self.request.session['token'] = token.key
         self.request.session['user_id'] = user.id
-        # self.request.user = 
         
-        return Response({'msg': 'User is logged in'})
+        return Response({'msg': f'{user} is logged in'})
         
         
         
@@ -47,9 +46,12 @@ class Logout(APIView):
     permission_classes = [IsLoggedIn]
     
     def post(self, request):
-        Token.objects.get(key=request.session['token']).delete()
+        token = Token.objects.filter(key=request.session['token'])
+        user = ModifiedUser.objects.get(id=token[0].user_id)
+        token.delete()
         del request.session['token']
-        return Response({'msg': 'Token deleted'})
+        del request.session['user_id']
+        return Response({'msg': f'{user} is logged out'})
     
     
 class GetAllUsers(APIView):

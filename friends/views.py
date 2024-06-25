@@ -20,7 +20,7 @@ class SendFriendRequest(APIView):
                                         status='pending',
                                         receiver_id=they)
         
-        return Response({'msg': 'Friend request sent'})
+        return Response({'msg': f'Friend request is sent to {they}'})
     
     
 class GetPendingFriendRequests(APIView):
@@ -44,12 +44,13 @@ class ManageFriendRequest(APIView):
         if action == 'accept':
             FriendRequests.objects.filter(receiver_id=me,
                                           sender_id=they).update(status='accepted')
+            return Response({'msg': f'Friend request sent by {they} is accepted'})
+        
         elif action == 'reject':
             FriendRequests.objects.filter(receiver_id=me,
                                           sender_id=they).update(status='rejected')
-        
-        return Response({'msg': 'Friend request action is done'})
-    
+            return Response({'msg': f'Friend request sent by {they} is rejected'})
+            
     
 class Friends(APIView):
     permission_classes = [IsLoggedIn]
