@@ -1,7 +1,12 @@
+from typing import Any
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.http import HttpRequest
 from .serializers import UserSerializer
 from .models import ModifiedUser
 from .permissions import IsLoggedIn
 from .pagination import TenEntriesPage
+
+from django.contrib.auth import authenticate
 
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView
@@ -13,47 +18,72 @@ from rest_framework.generics import ListAPIView
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
 
-
-
-class UserRegistration(APIView):    
-    def post(self, request):
-        ser = UserSerializer(data=request.data)
-        if ser.is_valid():
-            u = ModifiedUser.objects.create(**request.data)
-            u.set_password(request.data['password'])
-            u.save()
-            return Response({'msg': f'User {u} is created'})
-        else:
-            return Response({'msg': 'Please fill name, username, email and password'})    
-        
-        
-class Login(ObtainAuthToken):
+from .serializers import SignupSerializer, LoginSerializer
     
+    
+class UserRegistration(APIView):
     def post(self, request):
-        ser = self.serializer_class(data=request.data,
-                                    context={'request': request})
-        ser.is_valid(raise_exception=True)
-        user = ser.validated_data.get('user')
-        print(user.id)
-        token, _ = Token.objects.get_or_create(user=user)
-        print(token.key)
-        self.request.session['token'] = token.key
-        self.request.session['user_id'] = user.id
+        ser = SignupSerializer(data=request.data)
+        if ser.is_valid():
+            email = ser.validated_data.get('email')
+            password = ser.validated_data.get('password')
+            first_name = ser.validated_data.get('first_name')
+            last_name = ser.validated_data.get('last_name')
+            full_name = first_name + " " + last_name
+            username = first_name.lower() + "." + last_name.lower()
         
-        return Response({'msg': f'{user} is logged in'})
+            user_exists = ModifiedUser.objects.filter(email=email).exists()
+            if user_exists:
+                return Response({'msg': 'User exists'})
+            
+            user = ModifiedUser.objects.create(email=email,
+                                        password=password,
+                                        first_name=first_name,
+                                        last_name=last_name,
+                                        name=full_name,
+                                        username=username)
+            user.set_password(password)
+            user.save()
+            print(user)
+            return Response({'msg': f'User {user} registered'})
+        else:
+            return Response({'msg': 'Please enter first name, last name, email and password'})
         
+
+class Login(APIView):
+    def post(self, request):
+        ser = LoginSerializer(data=request.data)
+        if ser.is_valid():
+            email = ser.validated_data['email']
+            password = ser.validated_data['password']
+            print(email)
+            print(password)
+            user = authenticate(email=email,
+                                password=password)
+            print(user)
+            if user:
+                token, _ = Token.objects.get_or_create(user=user)
+                request.session['token'] = token.key
+                request.session['user_id'] = user.id
+                return Response({'msg': f'{user} is logged in'})
+            else:
+                return Response({'msg': 'Check the credentials'})
+            
+        else:
+            return Response({'msg': 'Please enter email and password'})
         
         
 class Logout(APIView):
     permission_classes = [IsLoggedIn]
     
-    def post(self, request):
+    def get(self, request):
         token = Token.objects.filter(key=request.session['token'])
         user = ModifiedUser.objects.get(id=token[0].user_id)
         token.delete()
         del request.session['token']
         del request.session['user_id']
         return Response({'msg': f'{user} is logged out'})
+
     
     
 class GetAllUsers(ListAPIView):
