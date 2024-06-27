@@ -52,3 +52,9 @@ python manage.py runserver
 | sender_id      | ForeignKey      |
 | status | CharField      |
 | receiver_id | ForeignKey      |
+
+## API Endpoints
+
+This postman documentation contains all details about each API endpoints and its request, response formats
+
+<https://documenter.getpostman.com/view/26708611/2sA3dsmDP8>
