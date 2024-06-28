@@ -13,24 +13,16 @@ This project provides APIs to manage users and the relationship between them whi
 ```
 2. Open your command line and go to the project directory.
 
-3. Create a virtual environment
+3. Create a Docker image
 ```bash
-python -m venv venv
-venv/Scripts/activate
+docker build -t django_docker .
 ```
-4. Install all dependencies
+4. Create a container of that image which would start the application
 ```bash
-pip install -r requirements.txt
+docker run -d -p 8000:8000 django_docker 
 ```
-5. Migrate all models
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
-6. Run the web server
-```bash
-python manage.py runserver
-```
+5. Test the APIs that are mentioned in API Endpoints documentation
+
 ## Data Model
 
 ### Modified User
